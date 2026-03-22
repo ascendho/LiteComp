@@ -1,0 +1,84 @@
+#ifndef COMPILER_HPP
+#define COMPILER_HPP
+
+#include <memory>
+#include <vector>
+
+#include "litecomp/code.hpp"
+#include "litecomp/symbol_table.hpp"
+
+struct Node;
+struct Object;
+struct Error;
+struct Bytecode;
+
+struct EmittedInstruction {
+    OpType opcode;
+    int position;
+};
+
+struct CompilationScope {
+    Instructions instructions;
+    EmittedInstruction last_instruction;
+    EmittedInstruction previous_instruction;
+};
+
+struct Compiler {
+    Compiler() = default;
+
+    Compiler(const Compiler &other) = default;
+
+    Compiler(Compiler &&other) noexcept = default;
+
+    Compiler &operator=(const Compiler &other) = default;
+
+    Compiler &operator=(Compiler &&other) noexcept = default;
+
+    std::vector<std::shared_ptr<Object>> constants;
+
+    std::shared_ptr<SymbolTable> symbol_table;
+
+    std::vector<CompilationScope> scopes;
+
+    int scope_index;
+
+    std::shared_ptr<Error> compile(std::shared_ptr<Node> node);
+
+    int add_constant(std::shared_ptr<Object> obj);
+    // addToPool
+
+    int emit(OpType op);
+
+    int emit(OpType op, int operand);
+
+    int emit(OpType op, int first_operand, int second_operand);
+
+    int add_instruction(Instructions ins);
+
+    void set_last_instruction(OpType op, int pos);
+
+    bool last_instruction_is(OpType op) const;
+
+    void remove_last_pop();
+
+    void replace_last_pop_with_return();
+
+    void replace_instruction(int pos, Instructions new_instruction);
+
+    void change_operand(int op_pos, int operand);
+
+    void enter_scope();
+
+    Instructions leave_scope();
+
+    void load_symbol(Symbol s);
+
+    std::shared_ptr<Bytecode> bytecode();
+};
+
+std::shared_ptr<Compiler> newCompiler();
+
+std::shared_ptr<Compiler> new_compiler_with_state(
+        std::shared_ptr<SymbolTable> s, std::vector<std::shared_ptr<Object>> constants);
+
+#endif
