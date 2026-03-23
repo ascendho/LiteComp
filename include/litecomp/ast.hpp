@@ -1,5 +1,5 @@
-#ifndef MONKEY_PLUSPLUS_AST_HPP
-#define MONKEY_PLUSPLUS_AST_HPP
+#pragma once
+
 
 #include <memory>
 #include <map>
@@ -430,4 +430,3 @@ struct Program : public Node {
     std::shared_ptr<Node> clone() const override;
 };
 
-#endif

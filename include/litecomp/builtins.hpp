@@ -1,5 +1,5 @@
-#ifndef BUILTINS_HPP
-#define BUILTINS_HPP
+#pragma once
+
 
 #include <array>
 #include <functional>
@@ -41,4 +41,3 @@ std::shared_ptr<Builtin> getBuiltinByName(const std::string &name);
 
 std::shared_ptr<Builtin> getBuiltinByIndex(int index);
 
-#endif

@@ -1,5 +1,5 @@
-#ifndef COMPILER_HPP
-#define COMPILER_HPP
+#pragma once
+
 
 #include <memory>
 #include <vector>
@@ -81,4 +81,3 @@ std::shared_ptr<Compiler> newCompiler();
 std::shared_ptr<Compiler> new_compiler_with_state(
         std::shared_ptr<SymbolTable> s, std::vector<std::shared_ptr<Object>> constants);
 
-#endif

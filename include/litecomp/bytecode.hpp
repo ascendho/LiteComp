@@ -1,5 +1,5 @@
-#ifndef BYTECODE_HPP
-#define BYTECODE_HPP
+#pragma once
+
 
 #include <memory>
 #include <vector>
@@ -23,4 +23,3 @@ struct Bytecode {
     std::vector<std::shared_ptr<Object>> constants;
 };
 
-#endif

@@ -1,5 +1,5 @@
-#ifndef VM_HPP
-#define VM_HPP
+#pragma once
+
 
 #include <array>
 #include <exception>
@@ -49,7 +49,7 @@ struct VM {
 
     std::shared_ptr<Frame> current_frame();
 
-    void push_frame(std::shared_ptr<Frame> f);
+    std::shared_ptr<Error> push_frame(std::shared_ptr<Frame> f);
 
     std::shared_ptr<Frame> pop_frame();
 
@@ -103,4 +103,3 @@ std::shared_ptr<Boolean> native_bool_to_boolean_object(bool input);
 
 bool is_truthy(std::shared_ptr<Object> obj);
 
-#endif

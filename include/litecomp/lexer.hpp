@@ -1,5 +1,5 @@
-#ifndef LEXER_HPP
-#define LEXER_HPP
+#pragma once
+
 
 #include <string>
 #include "litecomp/token.hpp"
@@ -45,4 +45,3 @@ private:
     char ch;              // 当前扫描到的字符
 };
 
-#endif

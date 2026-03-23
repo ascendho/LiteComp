@@ -1,5 +1,5 @@
-#ifndef MONKEY_PLUSPLUS_FRAME_HPP
-#define MONKEY_PLUSPLUS_FRAME_HPP
+#pragma once
+
 
 #include <memory>
 
@@ -26,9 +26,8 @@ struct Frame {
 
     int base_pointer;
 
-    Instructions instructions();
+    const Instructions& instructions() const;
 };
 
 std::shared_ptr<Frame> new_frame(std::shared_ptr<Closure> cl, int base_pointer);
 
-#endif //MONKEY_PLUSPLUS_FRAME_HPP

@@ -3,6 +3,7 @@
 #include "litecomp/ast.hpp"
 
 #include <sstream>
+#include <tuple>
 
 // Initialise global Boolean and Null Objects to avoid unnecessary Object creation
 auto GLOBAL_NULL = std::make_shared<Null>(Null{});
@@ -65,24 +66,16 @@ Environment& Environment::operator=(Environment&& other) noexcept {
 }
 
 std::tuple<std::shared_ptr<Object>, bool> Environment::get(const std::string &name) {
-    std::shared_ptr<Object> obj;
-    bool ok;
-
-    auto contains = store.find(name);
-    ok = !(contains == store.end());
-    if (ok) {
-        obj = store[name];
+    auto it = store.find(name);
+    if (it != store.end()) {
+        return std::make_tuple(it->second, true);
     }
 
-    if (!ok && outer) {
-        contains = outer->store.find(name);
-        ok = !(contains == outer->store.end());
-        if (ok) {
-            obj = outer->store[name];
-        }
+    if (outer) {
+        return outer->get(name);
     }
 
-    return std::make_tuple(obj, ok);
+    return std::make_tuple(nullptr, false);
 }
 
 std::shared_ptr<Object> Environment::set(std::string name, std::shared_ptr<Object> val) {
@@ -115,7 +108,7 @@ bool HashKey::operator!=(const HashKey &other) const {
 }
 
 bool HashKey::operator<(const HashKey &other) const {
-    return value < other.value;
+    return std::tie(type, value) < std::tie(other.type, other.value);
 }
 
 Hash::Hash(std::map<HashKey, HashPair> p) : pairs(std::move(p)) {}

@@ -1,15 +1,15 @@
-#ifndef REPL_HPP
-#define REPL_HPP
+#pragma once
+
 
 #include <vector>
 #include <string>
+#include <string_view>
 
-static const std::string PROMPT{">> "};
+inline constexpr std::string_view PROMPT{">> "};
 
-static const std::string ERRORSIGN{R"(-------- ERROR --------  )"};
+inline constexpr std::string_view ERRORSIGN{R"(-------- ERROR --------  )"};
 
-void lanuchRepl();
+void launchRepl();
 
 void printParserErrors(std::vector<std::string> errors);
 
-#endif

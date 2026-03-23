@@ -1,5 +1,5 @@
-#ifndef LITECOMP_BENCHMARK_CASES_HPP
-#define LITECOMP_BENCHMARK_CASES_HPP
+#pragma once
+
 
 #include <string>
 
@@ -28,4 +28,3 @@ h["k"] + h[1] + h[2];
 
 }  // namespace litecomp_bench
 
-#endif

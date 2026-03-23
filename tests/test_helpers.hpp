@@ -1,5 +1,5 @@
-#ifndef LITECOMP_TEST_HELPERS_HPP
-#define LITECOMP_TEST_HELPERS_HPP
+#pragma once
+
 
 #include <memory>
 #include <string>
@@ -64,4 +64,3 @@ inline std::pair<std::string, std::string> eval_input(const std::string& input) 
 
 }  // namespace test_helpers
 
-#endif

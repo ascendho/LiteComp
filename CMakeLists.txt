@@ -43,6 +43,7 @@ add_executable(litecomp_benchmark
     benchmarks/compiler.cpp
     benchmarks/vm.cpp
     benchmarks/end_to_end.cpp
+    benchmarks/scaling.cpp
 )
 target_include_directories(litecomp_benchmark PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(litecomp_benchmark PRIVATE litecomp_core benchmark::benchmark)
@@ -76,6 +77,7 @@ add_executable(litecomp_unit_tests
     tests/compiler_test.cpp
     tests/frame_test.cpp
     tests/lexer_test.cpp
+    tests/negative_golden_test.cpp
     tests/object_test.cpp
     tests/parser_test.cpp
     tests/repl_test.cpp

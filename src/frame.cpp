@@ -5,7 +5,7 @@
 Frame::Frame(std::shared_ptr<Closure> cl, int ip, int base_pointer) :
     cl{cl}, ip{ip}, base_pointer{base_pointer} {}
 
-Instructions Frame::instructions() {
+const Instructions& Frame::instructions() const {
     return cl->fn->instructions;
 }
 

@@ -1,5 +1,5 @@
-#ifndef LITECOMP_DEMO_TYPES_HPP
-#define LITECOMP_DEMO_TYPES_HPP
+#pragma once
+
 
 #include <string>
 
@@ -9,4 +9,3 @@ struct DemoCase {
     std::string expected;
 };
 
-#endif

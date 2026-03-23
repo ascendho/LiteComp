@@ -1,5 +1,5 @@
-#ifndef MONKEY_PLUSPLUS_SYMBOL_TABLE_HPP
-#define MONKEY_PLUSPLUS_SYMBOL_TABLE_HPP
+#pragma once
+
 
 #include <iomanip>
 #include <map>
@@ -63,4 +63,3 @@ std::shared_ptr<SymbolTable> new_symbol_table();
 
 std::shared_ptr<SymbolTable> new_enclosed_symbol_table(std::shared_ptr<SymbolTable> outer);
 
-#endif //MONKEY_PLUSPLUS_SYMBOL_TABLE_HPP

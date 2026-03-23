@@ -45,11 +45,14 @@ std::shared_ptr<Frame> VM::current_frame() {
     return frames[frames_index - 1];
 }
 
-void VM::push_frame(std::shared_ptr<Frame> f) {
-    // TODO: check that frames_index does not excced MAXFRAMES
+std::shared_ptr<Error> VM::push_frame(std::shared_ptr<Frame> f) {
+    if (frames_index >= MAXFRAMES) {
+        return new_error("frame overflow");
+    }
 
     // Push frame on to top of stack frame (frames[frames_index]) and increment stack frame pointer
     frames[frames_index++] = f;
+    return nullptr;
 }
 
 std::shared_ptr<Frame> VM::pop_frame() {
@@ -59,8 +62,7 @@ std::shared_ptr<Frame> VM::pop_frame() {
 
 std::shared_ptr<Error> VM::push(std::shared_ptr<Object> o) {
     if (sp >= STACKSIZE) {
-        std::cerr << ("fatal error: stack overflow") << std::endl;
-        throw std::exception();
+        return new_error("stack overflow");
     }
 
     // Push object on to top of stack (stack[sp]) and increment stack pointer
@@ -101,7 +103,10 @@ std::shared_ptr<Error> VM::call_closure(std::shared_ptr<Object> cl, int num_args
 
     // Create a new frame, set base pointer to current stack pointer, and push frame onto stack
     auto frame = new_frame(closure, sp - num_args);
-    push_frame(frame);
+    auto err = push_frame(frame);
+    if (err) {
+        return err;
+    }
 
     // Allocate space for local bindings underneath frame, by incrementing stack pointer
     sp = frame->base_pointer + closure->fn->num_locals;
@@ -186,19 +191,35 @@ std::shared_ptr<Error> VM::execute_comparison(OpType op) {
         return execute_integer_comparison(op, left, right);
     }
 
-    // Otherwise cast to Boolean and compare pointers of global True/False Objects
-    auto left_bool = std::dynamic_pointer_cast<Boolean>(left);
-    auto right_bool = std::dynamic_pointer_cast<Boolean>(right);
+    if (left->type() == ObjectType::BOOLEAN_OBJ && right->type() == ObjectType::BOOLEAN_OBJ) {
+        auto left_bool = std::dynamic_pointer_cast<Boolean>(left)->value;
+        auto right_bool = std::dynamic_pointer_cast<Boolean>(right)->value;
 
-    if (op == OpType::OpEqual) {
-        return push(native_bool_to_boolean_object(right_bool == left_bool));
-    } else if (op == OpType::OpNotEqual) {
-        return push(native_bool_to_boolean_object(right_bool != left_bool));
-    } else {
-//        return new_error("unknown operator: " + std::to_string(static_cast<int>(as_opcode(op))));
-        return new_error("Illegal Operation for String");
-
+        if (op == OpType::OpEqual) {
+            return push(native_bool_to_boolean_object(left_bool == right_bool));
+        }
+        if (op == OpType::OpNotEqual) {
+            return push(native_bool_to_boolean_object(left_bool != right_bool));
+        }
+        return new_error("unknown boolean comparison operator");
     }
+
+    if (left->type() == ObjectType::NULL_OBJ && right->type() == ObjectType::NULL_OBJ) {
+        if (op == OpType::OpEqual) {
+            return push(get_true_ref());
+        }
+        if (op == OpType::OpNotEqual) {
+            return push(get_false_ref());
+        }
+        return new_error("unknown null comparison operator");
+    }
+
+    if (op == OpType::OpEqual || op == OpType::OpNotEqual || op == OpType::OpGreaterThan) {
+        return new_error("unsupported types for comparison: " +
+                         objecttype_literal(left->type()) + " " + objecttype_literal(right->type()));
+    }
+
+    return new_error("unknown comparison operator");
 }
 
 std::shared_ptr<Error>
@@ -357,23 +378,27 @@ std::tuple<std::shared_ptr<Object>, std::shared_ptr<Error>> VM::build_hash(int s
 
 std::shared_ptr<Error> VM::run() {
     int ip;
-    Instructions ins;
     OpType op;
 
     while (current_frame()->ip < static_cast<int>(current_frame()->instructions().size()) - 1) {
+        auto frame = current_frame();
+
         // Increment instruction pointer within current stack frame
-        ip = ++(current_frame()->ip);
+        ip = ++(frame->ip);
 
         // Fetch current instruction within current stack frame
-        ins = current_frame()->instructions();
+        const auto& ins = frame->instructions();
         op = static_cast<OpType>(ins.at(ip));
 
         if (op == OpType::OpConstant) {
             auto const_index = read_uint_16(ins, ip + 1);
-            current_frame()->ip += 2;
+            frame->ip += 2;
 
             // Add constant to VM constants
-            push(constants.at(const_index));
+            auto err = push(constants.at(const_index));
+            if (err) {
+                return err;
+            }
             // OpPop instruction pops the top element off the stack
         } else if (op == OpType::OpPop) {
             pop();
@@ -412,18 +437,18 @@ std::shared_ptr<Error> VM::run() {
             // Read jump target into pos
             auto pos = read_uint_16(ins, ip + 1);
             // Skip two bytes of operand associated with conditional jump
-            current_frame()->ip += 2;
+            frame->ip += 2;
             // Pop stack top (condition). If not truthy then jump to target, else execute consequence
             auto condition = pop();
             if (!is_truthy(condition)) {
                 // Set instruction pointer to (jump target - 1), as ip is incremented on next iteration
-                current_frame()->ip = pos - 1;
+                frame->ip = pos - 1;
             }
         } else if (op == OpType::OpJump) {
             // Read jump target into pos
             auto pos = read_uint_16(ins, ip + 1);
             // Set instruction pointer to (jump target - 1), as ip is incremented on next iteration
-            current_frame()->ip = pos - 1;
+            frame->ip = pos - 1;
         } else if (op == OpType::OpNull) {
             auto err = push(get_null_ref());
             if (err) {
@@ -431,12 +456,12 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpSetGlobal) {
             auto global_index = read_uint_16(ins, ip + 1);
-            current_frame()->ip += 2;
+            frame->ip += 2;
 
             globals[global_index] = pop();
         } else if (op == OpType::OpGetGlobal) {
             auto global_index = read_uint_16(ins, ip + 1);
-            current_frame()->ip += 2;
+            frame->ip += 2;
 
             auto err = push(globals[global_index]);
             if (err) {
@@ -444,7 +469,7 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpArray) {
             auto num_elements = read_uint_16(ins, ip + 1);
-            current_frame()->ip += 2;
+            frame->ip += 2;
 
             auto array = build_array(sp - num_elements, sp);
             sp -= num_elements;
@@ -455,7 +480,7 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpHash) {
             auto num_elements = read_uint_16(ins, ip + 1);
-            current_frame()->ip += 2;
+            frame->ip += 2;
 
             auto [hash, err] = build_hash(sp - num_elements, sp);
             if (err) {
@@ -477,7 +502,7 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpCall) {
             auto num_args = read_uint_8(ins, ip + 1);
-            current_frame()->ip += 1;
+            frame->ip += 1;
 
             auto err = execute_call(num_args);
             if (err) {
@@ -505,7 +530,7 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpSetLocal) {
             auto local_index = read_uint_8(ins, ip + 1);
-            current_frame()->ip += 1;
+            frame->ip += 1;
 
             auto frame = current_frame();
 
@@ -513,7 +538,7 @@ std::shared_ptr<Error> VM::run() {
             stack[frame->base_pointer + local_index] = pop();
         } else if (op == OpType::OpGetLocal) {
             auto local_index = read_uint_8(ins, ip + 1);
-            current_frame()->ip += 1;
+            frame->ip += 1;
 
             auto frame = current_frame();
 
@@ -524,7 +549,7 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpGetBuiltin) {
             auto builtin_index = read_uint_8(ins, ip + 1);
-            current_frame()->ip += 1;
+            frame->ip += 1;
 
             auto definition = getBuiltinByIndex(builtin_index);
 
@@ -535,7 +560,7 @@ std::shared_ptr<Error> VM::run() {
         } else if (op == OpType::OpClosure) {
             auto const_index = read_uint_16(ins, ip + 1);
             auto num_free = read_uint_8(ins, ip + 3);
-            current_frame()->ip += 3;
+            frame->ip += 3;
 
             auto err = push_closure(const_index, num_free);
             if (err) {
@@ -543,7 +568,7 @@ std::shared_ptr<Error> VM::run() {
             }
         } else if (op == OpType::OpGetFree) {
             auto free_index = read_uint_8(ins, ip + 1);
-            current_frame()->ip += 1;
+            frame->ip += 1;
 
             auto current_closure = current_frame()->cl;
 

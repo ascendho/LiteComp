@@ -1,5 +1,5 @@
-#ifndef MONKEY_PLUSPLUS_CODE_HPP
-#define MONKEY_PLUSPLUS_CODE_HPP
+#pragma once
+
 
 #include <cstdint>
 #include <exception>
@@ -100,4 +100,3 @@ int read_uint_16(Instructions ins, int offset);
 
 std::tuple<std::vector<int>, int> read_operands(std::shared_ptr<Definition> def, Instructions ins);
 
-#endif //MONKEY_PLUSPLUS_CODE_HPP

@@ -1,5 +1,5 @@
-#ifndef LITECOMP_BENCHMARK_HELPERS_HPP
-#define LITECOMP_BENCHMARK_HELPERS_HPP
+#pragma once
+
 
 #include <iostream>
 #include <memory>
@@ -49,4 +49,3 @@ inline void run_vm_or_exit(const std::shared_ptr<Bytecode>& code) {
 
 }  // namespace litecomp_bench
 
-#endif

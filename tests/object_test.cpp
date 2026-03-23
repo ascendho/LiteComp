@@ -44,3 +44,27 @@ TEST(ObjectModule, HashMoveAssignmentReplacesContent) {
 TEST(ObjectModule, NullIsSingletonByReference) {
     EXPECT_EQ(get_null_ref(), get_null_ref());
 }
+
+TEST(ObjectModule, HashKeyOrderingDistinguishesTypeAndValue) {
+    HashKey int_one{ObjectType::INTEGER_OBJ, 1};
+    HashKey bool_true{ObjectType::BOOLEAN_OBJ, 1};
+
+    std::map<HashKey, HashPair> pairs;
+    pairs[int_one] = HashPair{std::make_shared<Integer>(Integer(1)), std::make_shared<String>(String("int"))};
+    pairs[bool_true] = HashPair{std::make_shared<Boolean>(Boolean(true)), std::make_shared<String>(String("bool"))};
+
+    EXPECT_EQ(pairs.size(), 2u);
+}
+
+TEST(ObjectModule, EnvironmentGetResolvesThroughMultipleOuterScopes) {
+    auto global = new_environment();
+    global->set("a", std::make_shared<Integer>(Integer(42)));
+
+    auto level1 = new_enclosed_environment(*global);
+    auto level2 = new_enclosed_environment(*level1);
+
+    auto [obj, ok] = level2->get("a");
+    ASSERT_TRUE(ok);
+    ASSERT_NE(obj, nullptr);
+    EXPECT_EQ(std::dynamic_pointer_cast<Integer>(obj)->value, 42);
+}

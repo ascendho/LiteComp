@@ -9,7 +9,7 @@
 #include "litecomp/parser.hpp"
 #include "litecomp/vm.hpp"
 
-void lanuchRepl() {
+void launchRepl() {
     std::string line;
     std::shared_ptr<Error> err;
 

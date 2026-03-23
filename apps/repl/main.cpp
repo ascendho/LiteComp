@@ -4,7 +4,7 @@ int main() {
     try {
         std::string line;
 
-        lanuchRepl();
+        launchRepl();
     }
     catch (const std::exception &) {
         return EXIT_FAILURE;

@@ -1,5 +1,5 @@
-#ifndef PARSER_HPP
-#define PARSER_HPP
+#pragma once
+
 
 #include <functional>
 #include <map>
@@ -116,4 +116,3 @@ private:
     std::map<TokenType, infixParseFn> infixParseFncs;     // 中缀解析函数哈希表
 };
 
-#endif

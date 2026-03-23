@@ -1,5 +1,5 @@
-#ifndef LITECOMP_DEMO_CASES_MODULE_HPP
-#define LITECOMP_DEMO_CASES_MODULE_HPP
+#pragma once
+
 
 #include <vector>
 
@@ -7,4 +7,3 @@
 
 std::vector<DemoCase> build_demo_cases();
 
-#endif

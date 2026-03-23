@@ -56,6 +56,21 @@ cmake --build build -j
 ./build/litecomp_benchmark
 ```
 
+### 3.1.1 规模曲线实验（Parse/Compile/Run vs N）
+
+已扩展规模曲线实验：对程序规模 `N`（算术链长度）按 2 倍增长进行 Parse/Compile/VM 三类基准测试。
+
+导出 CSV（用于画曲线）：
+
+```bash
+./build/litecomp_benchmark \
+	--benchmark_filter='BM_Scaling_.*' \
+	--benchmark_out=build/benchmark_scaling.csv \
+	--benchmark_out_format=csv
+```
+
+生成的 `build/benchmark_scaling.csv` 可直接导入 Python/Excel/Origin 绘制规模曲线。
+
 ### 3.2 回归测试程序（Regression）
 
 运行一组固定的端到端回归用例（parser/compiler/vm）。
@@ -102,6 +117,14 @@ ctest --test-dir build --output-on-failure
 
 ```bash
 ctest --test-dir build -R VmModule --output-on-failure
+```
+
+### 4.4 负向金标测试（Negative Golden Tests）
+
+项目已新增错误路径金标测试，用于固定非法输入下的诊断行为，避免后续重构导致错误信息回退。
+
+```bash
+ctest --test-dir build -R NegativeGolden --output-on-failure
 ```
 
 ## 5. 主要 CMake 目标
