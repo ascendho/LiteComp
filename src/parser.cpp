@@ -438,7 +438,8 @@ bool Parser::expectPeek(TokenType t) {
  * @brief 记录“期望 Token 与实际不符”的错误
  */
 void Parser::eyeError(TokenType t) {
-    std::string msg = "Expected " + searchToken(t) + ", got " + searchToken(nextToken.type);
+    std::string msg = "Expected token should be " + searchToken(t) + ", while got " +
+                      searchToken(nextToken.type) + " instead";
     e.push_back(msg);
 }
 
@@ -461,7 +462,7 @@ Precedence Parser::curPrecedence() const {
 }
 
 void Parser::noPrefixParseFnError(TokenType t) {
-    e.push_back("No prefix parse function for " + searchToken(t));
+    e.push_back("No Bounded Parse Function Found for " + searchToken(t) + " token");
 }
 
 void Parser::bindPrefixFunc(TokenType token_type, prefixParseFn fn) {

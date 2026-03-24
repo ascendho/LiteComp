@@ -1,73 +1,70 @@
 #include "litecomp/ast.hpp"
 
-// =============================================================================
-// DeclareStatement (变量声明语句，如：let x = 5;)
-// =============================================================================
-
 std::string DeclareStatement::token_literal() const {
     return token.literal;
 }
 
 std::string DeclareStatement::string() const {
     std::string out;
-    out.append(token_literal() + " "); // 通常是 "let"
-    out.append(name->string());        // 变量名
+
+    out.append(token_literal() + " ");
+    out.append(name->string());
     out.append(" = ");
-    out.append(value->string());       // 变量值表达式
+    out.append(value->string());
     out.append(";");
+
     return out;
 }
 
-// 克隆当前的声明语句节点
 std::shared_ptr<Node> DeclareStatement::clone() const {
     return std::make_shared<DeclareStatement>(DeclareStatement{*this});
 }
 
 DeclareStatement::DeclareStatement(const Token& t) : token{t} {}
 
-// 拷贝构造函数：实现深拷贝，确保子节点（name 和 value）也被克隆
 DeclareStatement::DeclareStatement(const DeclareStatement& other) : token{other.token} {
-    // 使用 clone() 确保递归地复制整个子树，而不是只复制指针
+    // Call clone methods to force deep copy
     name = std::dynamic_pointer_cast<Identifier>(other.name->clone());
     value = std::dynamic_pointer_cast<Expression>(other.value->clone());
 }
 
-// 移动构造函数：高效转移资源
 DeclareStatement::DeclareStatement(DeclareStatement&& other) noexcept {
     token = std::move(other.token);
     name = std::move(other.name);
     value = std::move(other.value);
 
-    // 重置源对象
     other.name = nullptr;
     other.value = nullptr;
     other.token.type = TokenType::ILLEGAL;
     other.token.literal = "";
 }
 
-// 赋值运算符重载（深拷贝版本）
 DeclareStatement& DeclareStatement::operator=(const DeclareStatement& other) {
     if (this == &other) return *this;
+
     token = other.token;
+
+    // Call clone methods to force deep copy
     name = std::dynamic_pointer_cast<Identifier>(other.name->clone());
     value = std::dynamic_pointer_cast<Expression>(other.value->clone());
+
     return *this;
 }
 
-// 赋值运算符重载（移动语义版本）
 DeclareStatement& DeclareStatement::operator=(DeclareStatement&& other) noexcept {
     if (this == &other) return *this;
+
     token = std::move(other.token);
     name = std::move(other.name);
     value = std::move(other.value);
+
     other.name = nullptr;
     other.value = nullptr;
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+
     return *this;
 }
-
-// =============================================================================
-// ReturnStatement (返回语句，如：return 5;)
-// =============================================================================
 
 std::string ReturnStatement::token_literal() const {
     return token.literal;
@@ -75,9 +72,11 @@ std::string ReturnStatement::token_literal() const {
 
 std::string ReturnStatement::string() const {
     std::string out;
+
     out.append(token_literal() + " ");
     out.append(return_value->string());
     out.append(";");
+
     return out;
 }
 
@@ -88,20 +87,42 @@ std::shared_ptr<Node> ReturnStatement::clone() const {
 ReturnStatement::ReturnStatement(const Token& t) : token(t) {}
 
 ReturnStatement::ReturnStatement(const ReturnStatement& other) : token{other.token} {
+    // Call clone methods to force deep copy
     return_value = std::dynamic_pointer_cast<Expression>(other.return_value->clone());
 }
 
 ReturnStatement::ReturnStatement(ReturnStatement&& other) noexcept {
     token = std::move(other.token);
     return_value = std::move(other.return_value);
+
     other.return_value = nullptr;
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
 }
 
-// ... (ReturnStatement 的赋值运算符实现逻辑与 DeclareStatement 类似)
+ReturnStatement& ReturnStatement::operator=(const ReturnStatement& other) {
+    if (this == &other) return *this;
 
-// =============================================================================
-// ExpressionStatement (表达式语句，如直接调用函数或单纯的运算：add(1, 2);)
-// =============================================================================
+    token = other.token;
+
+    // Call clone methods to force deep copy
+    return_value = std::dynamic_pointer_cast<Expression>(other.return_value->clone());
+
+    return *this;
+}
+
+ReturnStatement& ReturnStatement::operator=(ReturnStatement&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    return_value = std::move(other.return_value);
+
+    other.return_value = nullptr;
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+
+    return *this;
+}
 
 std::string ExpressionStatement::token_literal() const {
     return token.literal;
@@ -109,9 +130,9 @@ std::string ExpressionStatement::token_literal() const {
 
 std::string ExpressionStatement::string() const {
     std::string out;
-    if (expression) {
-        out.append(expression->string());
-    }
+
+    out.append(expression->string());
+
     return out;
 }
 
@@ -119,26 +140,96 @@ std::shared_ptr<Node> ExpressionStatement::clone() const {
     return std::make_shared<ExpressionStatement>(ExpressionStatement{*this});
 }
 
-// ... (ExpressionStatement 的构造与赋值实现，确保 expression 子节点的深度复制)
+ExpressionStatement::ExpressionStatement(const Token& t) : token{t} {}
 
-// =============================================================================
-// Identifier (标识符节点)
-// =============================================================================
+ExpressionStatement::ExpressionStatement(const ExpressionStatement& other) : token{other.token} {
+    // Call clone methods to force deep copy
+    expression = std::dynamic_pointer_cast<Expression>(other.expression->clone());
+}
+
+ExpressionStatement::ExpressionStatement(ExpressionStatement&& other) noexcept {
+    token = std::move(other.token);
+    expression = std::move(other.expression);
+
+    other.expression = nullptr;
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+}
+
+ExpressionStatement& ExpressionStatement::operator=(const ExpressionStatement& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+
+    // Call clone methods to force deep copy
+    expression = std::dynamic_pointer_cast<Expression>(other.expression->clone());
+
+    return *this;
+}
+
+ExpressionStatement& ExpressionStatement::operator=(ExpressionStatement&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    expression = std::move(other.expression);
+
+    other.expression = nullptr;
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+
+    return *this;
+}
+
+std::string Identifier::token_literal() const {
+    return token.literal;
+}
 
 std::string Identifier::string() const {
-    return value; // 返回标识符名称
+    return value;
 }
 
 std::shared_ptr<Node> Identifier::clone() const {
     return std::make_shared<Identifier>(Identifier{*this});
 }
 
-// Identifier 内部是简单的 string 和 Token，不涉及复杂的深拷贝逻辑
 Identifier::Identifier(const Token& t, const std::string& v) : token{t}, value{v} {}
 
-// =============================================================================
-// IntegerLiteral (整数型字面量)
-// =============================================================================
+Identifier::Identifier(const Identifier &other) : token{other.token}, value{other.value} {}
+
+Identifier::Identifier(Identifier&& other) noexcept {
+    token = std::move(other.token);
+    value = std::move(other.value);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = "";
+}
+
+Identifier& Identifier::operator=(const Identifier& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    value = other.value;
+
+    return *this;
+}
+
+Identifier& Identifier::operator=(Identifier&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    value = std::move(other.value);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = "";
+
+    return *this;
+}
+
+std::string IntegerLiteral::token_literal() const {
+    return token.literal;
+}
 
 std::string IntegerLiteral::string() const {
     return std::to_string(value);
@@ -148,12 +239,140 @@ std::shared_ptr<Node> IntegerLiteral::clone() const {
     return std::make_shared<IntegerLiteral>(IntegerLiteral{*this});
 }
 
-// =============================================================================
-// PrefixExpression (前缀表达式，如：!true, -5)
-// =============================================================================
+IntegerLiteral::IntegerLiteral(const Token& t) : token{t}, value{} {}
+
+IntegerLiteral::IntegerLiteral(const IntegerLiteral& other) : token{other.token}, value{other.value} {}
+
+IntegerLiteral::IntegerLiteral(IntegerLiteral&& other) noexcept {
+    token = std::move(other.token);
+    value = other.value;
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = 0;
+}
+
+IntegerLiteral& IntegerLiteral::operator=(const IntegerLiteral& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    value = other.value;
+
+    return *this;
+}
+
+IntegerLiteral& IntegerLiteral::operator=(IntegerLiteral&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    value = other.value;
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = 0;
+
+    return *this;
+}
+
+std::string BooleanLiteral::token_literal() const {
+    return token.literal;
+}
+
+std::string BooleanLiteral::string() const {
+    return token.literal;
+}
+
+std::shared_ptr<Node> BooleanLiteral::clone() const {
+    return std::make_shared<BooleanLiteral>(BooleanLiteral{*this});
+}
+
+BooleanLiteral::BooleanLiteral(const Token& t, bool v) : token{t}, value{v} {}
+
+BooleanLiteral::BooleanLiteral(const BooleanLiteral& other) : token{other.token}, value{other.value} {}
+
+BooleanLiteral::BooleanLiteral(BooleanLiteral&& other) noexcept {
+    token = std::move(other.token);
+    value = other.value;
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = false;
+}
+
+BooleanLiteral& BooleanLiteral::operator=(const BooleanLiteral& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    value = other.value;
+
+    return *this;
+}
+
+BooleanLiteral& BooleanLiteral::operator=(BooleanLiteral&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    value = other.value;
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = false;
+
+    return *this;
+}
+
+std::string StringLiteral::token_literal() const {
+    return token.literal;
+}
+
+std::string StringLiteral::string() const {
+    return token.literal;
+}
+
+std::shared_ptr<Node> StringLiteral::clone() const {
+    return std::make_shared<StringLiteral>(StringLiteral{*this});
+}
+
+StringLiteral::StringLiteral(const Token& t, std::string v) : token{t}, value{std::move(v)} {}
+
+StringLiteral::StringLiteral(const StringLiteral& other) : token{other.token}, value{other.value} {}
+
+StringLiteral::StringLiteral(StringLiteral&& other) noexcept {
+    token = std::move(other.token);
+    value = std::move(other.value);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = "";
+}
+
+StringLiteral& StringLiteral::operator=(const StringLiteral& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    value = other.value;
+
+    return *this;
+}
+
+StringLiteral& StringLiteral::operator=(StringLiteral&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    value = std::move(other.value);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.value = "";
+
+    return *this;
+}
+
+std::string PrefixExpression::token_literal() const {
+    return token.literal;
+}
 
 std::string PrefixExpression::string() const {
-    // 加上括号以确保在打印 AST 时优先级清晰
     return "(" + op + right->string() + ")";
 }
 
@@ -161,14 +380,54 @@ std::shared_ptr<Node> PrefixExpression::clone() const {
     return std::make_shared<PrefixExpression>(PrefixExpression{*this});
 }
 
+PrefixExpression::PrefixExpression(const Token& t, const std::string& o) : token{t}, op{o} {}
+
 PrefixExpression::PrefixExpression(const PrefixExpression& other) : token{other.token}, op{other.op} {
-    // 递归克隆右侧的操作数表达式
+    // Call clone methods to force deep copy
     right = std::dynamic_pointer_cast<Expression>(other.right->clone());
 }
 
-// =============================================================================
-// InfixExpression (中缀表达式，如：5 + 5)
-// =============================================================================
+PrefixExpression::PrefixExpression(PrefixExpression&& other) noexcept {
+    token = std::move(other.token);
+    op = std::move(other.op);
+    right = std::move(other.right);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.op = "";
+    other.right = nullptr;
+}
+
+PrefixExpression& PrefixExpression::operator=(const PrefixExpression& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    op = other.op;
+
+    // Call clone methods to force deep copy
+    right = std::dynamic_pointer_cast<Expression>(other.right->clone());
+
+    return *this;
+}
+
+PrefixExpression& PrefixExpression::operator=(PrefixExpression&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    op = std::move(other.op);
+    right = std::move(other.right);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.op = "";
+    other.right = nullptr;
+
+    return *this;
+}
+
+std::string InfixExpression::token_literal() const {
+    return token.literal;
+}
 
 std::string InfixExpression::string() const {
     return "(" + left->string() + " " + op + " " + right->string() + ")";
@@ -178,146 +437,572 @@ std::shared_ptr<Node> InfixExpression::clone() const {
     return std::make_shared<InfixExpression>(InfixExpression{*this});
 }
 
+InfixExpression::InfixExpression(const Token& t, const std::string &o) : token{t}, op{o} {}
+
 InfixExpression::InfixExpression(const InfixExpression& other) : token{other.token}, op{other.op} {
-    // 左右两个子节点都需要深度克隆
+    // Call clone methods to force deep copy
     left = std::dynamic_pointer_cast<Expression>(other.left->clone());
     right = std::dynamic_pointer_cast<Expression>(other.right->clone());
 }
 
-// =============================================================================
-// BlockStatement (代码块，{} 内的一组语句)
-// =============================================================================
+InfixExpression::InfixExpression(InfixExpression&& other) noexcept {
+    token = std::move(other.token);
+    left = std::move(other.left);
+    op = std::move(other.op);
+    right = std::move(other.right);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.left = nullptr;
+    other.op = "";
+    other.right = nullptr;
+}
+
+InfixExpression& InfixExpression::operator=(const InfixExpression& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    op = other.op;
+
+    // Call clone methods to force deep copy
+    left = std::dynamic_pointer_cast<Expression>(other.left->clone());
+    right = std::dynamic_pointer_cast<Expression>(other.right->clone());
+
+    return *this;
+}
+
+InfixExpression& InfixExpression::operator=(InfixExpression&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    left = std::move(other.left);
+    op = std::move(other.op);
+    right = std::move(other.right);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.left = nullptr;
+    other.op = "";
+    other.right = nullptr;
+
+    return *this;
+}
+
+std::string BlockStatement::token_literal() const {
+    return token.literal;
+}
 
 std::string BlockStatement::string() const {
     std::string msg;
+
     for (const auto &stmt: statements) {
         msg.append(stmt->string());
     }
+
     return msg;
 }
 
+std::shared_ptr<Node> BlockStatement::clone() const {
+    return std::make_shared<BlockStatement>(BlockStatement{*this});
+}
+
+BlockStatement::BlockStatement(const Token& t) : token{t} {}
+
 BlockStatement::BlockStatement(const BlockStatement& other) : token{other.token}, statements{} {
-    // 遍历所有语句，并逐一克隆
     for (const auto &s: other.statements) {
         statements.push_back(s->clone());
     }
 }
 
-// =============================================================================
-// IfExpression (If 条件分支)
-// =============================================================================
+BlockStatement::BlockStatement(BlockStatement &&other) noexcept {
+    token = std::move(other.token);
+    statements.swap(other.statements);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+}
+
+BlockStatement& BlockStatement::operator=(const BlockStatement& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    statements.clear();
+
+    for (const auto &s: other.statements) {
+        statements.push_back(s->clone());
+    }
+
+    return *this;
+}
+
+BlockStatement& BlockStatement::operator=(BlockStatement&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    statements.swap(other.statements);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+
+    return *this;
+}
+
+std::string IfExpression::token_literal() const {
+    return token.literal;
+}
 
 std::string IfExpression::string() const {
     std::string msg = "if" + condition->string() + " " + consequence->string();
-    // 如果有 else 分支
-    if (alternative) { 
+
+    if (alternative) {
         msg += "else ";
         msg += alternative->string();
     }
+
     return msg;
 }
 
-// ... (IfExpression 的深拷贝需要克隆条件、Consequence块和可选的 Alternative块)
+std::shared_ptr<Node> IfExpression::clone() const {
+    return std::make_shared<IfExpression>(IfExpression{*this});
+}
 
-// =============================================================================
-// FuncLiteral (函数定义，如：fn(x) { x + 1; })
-// =============================================================================
+IfExpression::IfExpression(const Token& t) : token{t} {}
+
+IfExpression::IfExpression(const IfExpression& other) : token{other.token} {
+    // Call clone methods to force deep copy
+    condition = std::dynamic_pointer_cast<Expression>(other.condition->clone());
+    consequence = std::dynamic_pointer_cast<BlockStatement>(other.consequence->clone());
+    alternative = std::dynamic_pointer_cast<BlockStatement>(other.alternative->clone());
+}
+
+IfExpression::IfExpression(IfExpression&& other) noexcept {
+    token = std::move(other.token);
+    condition = std::move(other.condition);
+    consequence = std::move(other.consequence);
+    alternative = std::move(other.alternative);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.condition = nullptr;
+    other.consequence = nullptr;
+    other.alternative = nullptr;
+}
+
+IfExpression& IfExpression::operator=(const IfExpression& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+
+    // Call clone methods to force deep copy
+    condition = std::dynamic_pointer_cast<Expression>(other.condition->clone());
+    consequence = std::dynamic_pointer_cast<BlockStatement>(other.consequence->clone());
+    alternative = std::dynamic_pointer_cast<BlockStatement>(other.alternative->clone());
+
+    return *this;
+}
+
+IfExpression& IfExpression::operator=(IfExpression&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    condition = std::move(other.condition);
+    consequence = std::move(other.consequence);
+    alternative = std::move(other.alternative);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.condition = nullptr;
+    other.consequence = nullptr;
+    other.alternative = nullptr;
+
+    return *this;
+}
+
+std::string FuncLiteral::token_literal() const {
+    return token.literal;
+}
 
 std::string FuncLiteral::string() const {
     std::string msg = token.literal;
-    // 如果是具名函数
-    if (name != "") { msg += "<" + name + ">"; } 
-    msg += "(";
-    // 拼接参数列表
-    for (size_t i = 0; i < parameters.size(); ++i) {
-        if (i != 0) msg += ", ";
-        msg += parameters[i]->string();
+
+    if (name != "") {
+        msg += "<" + name + ">";
     }
+
+    msg += "(";
+
+    int counter = 0;
+
+    for (const auto &p: parameters) {
+        if (counter != 0) {
+            msg += ", ";
+        }
+        msg += p->string();
+        counter++;
+    }
+
     msg += ") ";
-    // 函数体
-    msg += body->string(); 
+    msg += body->string();
+
     return msg;
 }
 
-// =============================================================================
-// ArrayLiteral (数组，如：[1, 2, a + b])
-// =============================================================================
+std::shared_ptr<Node> FuncLiteral::clone() const {
+    return std::make_shared<FuncLiteral>(FuncLiteral{*this});
+}
+
+FuncLiteral::FuncLiteral(const Token& t) : token{t} {}
+
+FuncLiteral::FuncLiteral(const FuncLiteral& other) : token{other.token}, parameters{}, name{other.name} {
+    for (const auto &s: other.parameters) {
+        parameters.push_back(std::dynamic_pointer_cast<Identifier>(s->clone()));
+    }
+
+    body = std::dynamic_pointer_cast<BlockStatement>(other.body->clone());
+}
+
+FuncLiteral::FuncLiteral(FuncLiteral&& other) noexcept {
+    token = std::move(other.token);
+    parameters.swap(other.parameters);
+    body = std::move(other.body);
+    name = std::move(other.name);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.body = nullptr;
+    other.name = "";
+}
+
+FuncLiteral& FuncLiteral::operator=(const FuncLiteral& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    parameters.clear();
+
+    for (const auto &s: other.parameters) {
+        parameters.push_back(std::dynamic_pointer_cast<Identifier>(s->clone()));
+    }
+
+    body = std::dynamic_pointer_cast<BlockStatement>(other.body->clone());
+    name = other.name;
+
+    return *this;
+}
+
+FuncLiteral& FuncLiteral::operator=(FuncLiteral&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    parameters.swap(other.parameters);
+    body = std::move(other.body);
+    name = std::move(other.name);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.body = nullptr;
+    other.name = "";
+
+    return *this;
+}
+
+std::string ArrayLiteral::token_literal() const {
+    return token.literal;
+}
 
 std::string ArrayLiteral::string() const {
     std::string out = "[";
-    for (size_t i = 0; i < elements.size(); ++i) {
-        if (i != 0) out += ", ";
-        out += elements[i]->string();
+
+    int counter = 0;
+
+    for (const auto &e: elements) {
+        if (counter != 0) {
+            out += ", ";
+        }
+        out += e->string();
+        counter++;
     }
+
     out += "]";
+
     return out;
 }
 
-// =============================================================================
-// HashLiteral (哈希/字典，如：{"key": value})
-// =============================================================================
+std::shared_ptr<Node> ArrayLiteral::clone() const {
+    return std::make_shared<ArrayLiteral>(ArrayLiteral{*this});
+}
 
-// 用于 map 的 key 排序逻辑：根据表达式转换出的字符串进行排序
+ArrayLiteral::ArrayLiteral(const Token& t) : token{t} {}
+
+ArrayLiteral::ArrayLiteral(const ArrayLiteral& other) : token{other.token}, elements{} {
+    for (const auto &s: other.elements) {
+        elements.push_back(std::dynamic_pointer_cast<Expression>(s->clone()));
+    }
+}
+
+ArrayLiteral::ArrayLiteral(ArrayLiteral&& other) noexcept {
+    token = std::move(other.token);
+    elements.swap(other.elements);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+}
+
+ArrayLiteral& ArrayLiteral::operator=(const ArrayLiteral& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    elements.clear();
+
+    for (const auto &s: other.elements) {
+        elements.push_back(std::dynamic_pointer_cast<Expression>(s->clone()));
+    }
+
+    return *this;
+}
+
+ArrayLiteral& ArrayLiteral::operator=(ArrayLiteral&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    elements.swap(other.elements);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+
+    return *this;
+}
+
 bool comp_hashliteral::operator()(std::shared_ptr<Expression> key1, std::shared_ptr<Expression> key2) const {
     return key1->string() < key2->string();
 }
 
+std::string HashLiteral::token_literal() const {
+    return token.literal;
+}
+
 std::string HashLiteral::string() const {
     std::string out = "{";
+
     int counter = 0;
+
     for (const auto &p: pairs) {
-        if (counter++ != 0) out += ", ";
-        // C++17 结构化绑定
-        const auto[key, value] = p; 
+        if (counter++ != 0) {
+            out += ", ";
+        }
+
+        const auto[key, value] = p;
         out += key->string() + ":" + value->string();
     }
+
     out += "}";
+
     return out;
 }
 
-// =============================================================================
-// IndexExpression (索引访问，如：myArray[0])
-// =============================================================================
+std::shared_ptr<Node> HashLiteral::clone() const {
+    return std::make_shared<HashLiteral>(HashLiteral{*this});
+}
+
+HashLiteral::HashLiteral(const Token& t) : token{t} {}
+
+HashLiteral::HashLiteral(const HashLiteral& other) : token{other.token}, pairs{} {
+    for (const auto &kv: other.pairs) {
+        const auto[key, value] = kv;
+        auto key_copy = std::dynamic_pointer_cast<Expression>(key->clone());
+        auto value_copy = std::dynamic_pointer_cast<Expression>(value->clone());
+        pairs[key_copy] = value_copy;
+    }
+}
+
+HashLiteral::HashLiteral(HashLiteral&& other) noexcept {
+    token = std::move(other.token);
+    pairs.merge(other.pairs);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+}
+
+HashLiteral& HashLiteral::operator=(const HashLiteral& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    pairs.clear();
+
+    for (const auto &kv: other.pairs) {
+        const auto[key, value] = kv;
+        auto key_copy = std::dynamic_pointer_cast<Expression>(key->clone());
+        auto value_copy = std::dynamic_pointer_cast<Expression>(value->clone());
+        pairs[key_copy] = value_copy;
+    }
+
+    return *this;
+}
+
+HashLiteral& HashLiteral::operator=(HashLiteral&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    pairs.merge(other.pairs);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+
+    return *this;
+}
+
+std::string IndexExpression::token_literal() const {
+    return token.literal;
+}
 
 std::string IndexExpression::string() const {
     std::string out = "(";
-    out += left->string();  // 数组或哈希对象
+    out += left->string();
     out += "[";
-    out += index->string(); // 索引表达式
+    out += index->string();
     out += "])";
+
     return out;
 }
 
-// =============================================================================
-// CallExpression (函数调用，如：add(2, 3))
-// =============================================================================
+std::shared_ptr<Node> IndexExpression::clone() const {
+    return std::make_shared<IndexExpression>(IndexExpression{*this});
+}
+
+IndexExpression::IndexExpression(const Token& t) : token{t} {}
+
+IndexExpression::IndexExpression(const IndexExpression& other) : token{other.token} {
+    // Call clone methods to force deep copy
+    left = std::dynamic_pointer_cast<Expression>(other.left->clone());
+    index = std::dynamic_pointer_cast<Expression>(other.index->clone());
+}
+
+IndexExpression::IndexExpression(IndexExpression&& other) noexcept {
+    token = std::move(other.token);
+    left = std::move(other.left);
+    index = std::move(other.index);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.left = nullptr;
+    other.index = nullptr;
+}
+
+IndexExpression& IndexExpression::operator=(const IndexExpression& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+
+    // Call clone methods to force deep copy
+    left = std::dynamic_pointer_cast<Expression>(other.left->clone());
+    index = std::dynamic_pointer_cast<Expression>(other.index->clone());
+
+    return *this;
+}
+
+IndexExpression& IndexExpression::operator=(IndexExpression&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    left = std::move(other.left);
+    index = std::move(other.index);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.left = nullptr;
+    other.index = nullptr;
+
+    return *this;
+}
+
+std::string CallExpression::token_literal() const {
+    return token.literal;
+}
 
 std::string CallExpression::string() const {
     std::string msg = function->string() + "(";
-    for (size_t i = 0; i < arguments.size(); ++i) {
-        if (i != 0) msg += ", ";
-        msg += arguments[i]->string();
+
+    int counter = 0;
+
+    for (const auto &a: arguments) {
+        if (counter != 0) {
+            msg += ", ";
+        }
+        msg += a->string();
+        counter++;
     }
+
     msg += ")";
+
     return msg;
 }
 
-// =============================================================================
-// Program (AST 根节点，代表整个源文件)
-// =============================================================================
+std::shared_ptr<Node> CallExpression::clone() const {
+    return std::make_shared<CallExpression>(CallExpression{*this});
+}
+
+CallExpression::CallExpression(const Token& t, std::shared_ptr<Expression> f) : token{t}, function{f} {}
+
+CallExpression::CallExpression(const CallExpression& other) : token{other.token}, arguments{} {
+    function = std::dynamic_pointer_cast<Expression>(other.function->clone());
+
+    for (const auto &s: other.arguments) {
+        arguments.push_back(std::dynamic_pointer_cast<Expression>(s->clone()));
+    }
+}
+
+CallExpression::CallExpression(CallExpression&& other) noexcept {
+    token = std::move(other.token);
+    function = std::move(other.function);
+    arguments.swap(other.arguments);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.function = nullptr;
+}
+
+CallExpression& CallExpression::operator=(const CallExpression& other) {
+    if (this == &other) return *this;
+
+    token = other.token;
+    function = std::dynamic_pointer_cast<Expression>(other.function->clone());
+    arguments.clear();
+
+    for (const auto &s: other.arguments) {
+        arguments.push_back(std::dynamic_pointer_cast<Expression>(s->clone()));
+    }
+
+    return *this;
+}
+
+CallExpression& CallExpression::operator=(CallExpression&& other) noexcept {
+    if (this == &other) return *this;
+
+    token = std::move(other.token);
+    function = std::move(other.function);
+    arguments.swap(other.arguments);
+
+    other.token.type = TokenType::ILLEGAL;
+    other.token.literal = "";
+    other.function = nullptr;
+
+    return *this;
+}
 
 std::string Program::token_literal() const {
     if (!statements.empty()) {
         return statements.at(0)->token_literal();
+    } else {
+        return "";
     }
-    return "";
 }
 
 std::string Program::string() const {
     std::string out;
+
     for (const auto &s: statements) {
         out.append(s->string());
     }
+
     return out;
 }
 
@@ -326,28 +1011,31 @@ std::shared_ptr<Node> Program::clone() const {
 }
 
 Program::Program(const Program& other) : statements{} {
-    // 拷贝整个程序意味着克隆其下的所有语句
     for (const auto &s: other.statements) {
         statements.push_back(s->clone());
     }
 }
 
 Program::Program(Program&& other) noexcept {
-    // 交换向量内容，极快
-    statements.swap(other.statements); 
+    statements.swap(other.statements);
 }
 
 Program& Program::operator=(const Program& other) {
     if (this == &other) return *this;
+
     statements.clear();
+
     for (const auto &s: other.statements) {
         statements.push_back(s->clone());
     }
+
     return *this;
 }
 
 Program& Program::operator=(Program&& other) noexcept {
     if (this == &other) return *this;
+
     statements.swap(other.statements);
+
     return *this;
 }
