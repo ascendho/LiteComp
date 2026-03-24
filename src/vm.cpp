@@ -1,78 +1,75 @@
 #include "litecomp/vm.hpp"
-
 #include "litecomp/builtins.hpp"
 #include "litecomp/bytecode.hpp"
 #include "litecomp/frame.hpp"
 #include "litecomp/object.hpp"
 
+/**
+ * @brief 构造函数：初始化虚拟机
+ * @param bytecode 包含编译后的指令和常量池
+ */
 VM::VM(std::shared_ptr<Bytecode> &&bytecode) : frames{}, stack{}, globals{} {
-    // Create a main frame to contain the bytecode instructions
+    // 1. 将所有的指令打包进一个“主函数”编译对象中
     auto main_fn = std::make_shared<CompiledFunction>(CompiledFunction(bytecode->instructions));
+    // 2. 将主函数包装成闭包（因为 VM 统一执行闭包对象）
     auto main_closure = std::make_shared<Closure>(Closure(main_fn));
+    // 3. 创建主程序的第一个栈帧（Frame），设置 IP 为 -1
     auto main_frame = new_frame(main_closure, 0);
 
-    // Place main frame at first frame index and set frames_index at one above this
+    // 4. 将主帧放入调用栈底部
     frames[0] = main_frame;
     frames_index = 1;
 
+    // 转移常量池所有权
     constants = std::move(bytecode->constants);
 
-    // Stack pointer starts at 0
+    // 初始化数据栈指针
     sp = 0;
 }
 
+/**
+ * @brief 构造函数：保留全局变量状态（用于 REPL 等增量执行场景）
+ */
 VM::VM(std::shared_ptr<Bytecode> &&bytecode, std::array<std::shared_ptr<Object>, GLOBALSSIZE> s)
         : frames{}, stack{}, globals{} {
-    // Create a main frame to contain the bytecode instructions
     auto main_fn = std::make_shared<CompiledFunction>(CompiledFunction(bytecode->instructions));
     auto main_closure = std::make_shared<Closure>(Closure(main_fn));
     auto main_frame = new_frame(main_closure, 0);
 
-    // Place main frame at first frame index and set frames_index at one above this
     frames[0] = main_frame;
     frames_index = 1;
 
     constants = std::move(bytecode->constants);
 
-    // Copy globals from provided source to destination
+    // 从外部恢复全局变量映射表
     std::copy(std::begin(s), std::end(s), std::begin(globals));
 
-    // Stack pointer starts at 0
     sp = 0;
 }
+
+// --- 栈帧与数据栈基础操作 ---
 
 std::shared_ptr<Frame> VM::current_frame() {
     return frames[frames_index - 1];
 }
 
 std::shared_ptr<Error> VM::push_frame(std::shared_ptr<Frame> f) {
-    if (frames_index >= MAXFRAMES) {
-        return new_error("frame overflow");
-    }
-
-    // Push frame on to top of stack frame (frames[frames_index]) and increment stack frame pointer
+    if (frames_index >= MAXFRAMES) return new_error("frame overflow");
     frames[frames_index++] = f;
     return nullptr;
 }
 
 std::shared_ptr<Frame> VM::pop_frame() {
-    // Pop frame on top of stack frame (frames[frames_index-1]) and decrement stack frame pointer
     return frames[--frames_index];
 }
 
 std::shared_ptr<Error> VM::push(std::shared_ptr<Object> o) {
-    if (sp >= STACKSIZE) {
-        return new_error("stack overflow");
-    }
-
-    // Push object on to top of stack (stack[sp]) and increment stack pointer
+    if (sp >= STACKSIZE) return new_error("stack overflow");
     stack[sp++] = o;
-
     return nullptr;
 }
 
 std::shared_ptr<Object> VM::pop() {
-    // Pop object on top of stack (stack[sp-1]) and decrement stack pointer
     return stack[--sp];
 }
 
@@ -80,7 +77,14 @@ std::shared_ptr<Object> VM::last_popped_stack_elem() {
     return stack[sp];
 }
 
+// --- 函数调用与闭包处理 ---
+
+/**
+ * @brief 执行调用指令 (OpCall)
+ * 分发逻辑：判断被调用者是用户定义的闭包还是系统内置函数
+ */
 std::shared_ptr<Error> VM::execute_call(int num_args) {
+    // 被调用者在栈中的位置：当前栈顶向下偏移 (参数个数 + 1)
     auto callee = stack[sp - 1 - num_args];
 
     if (callee->type() == ObjectType::CLOSURE_OBJ) {
@@ -92,516 +96,340 @@ std::shared_ptr<Error> VM::execute_call(int num_args) {
     }
 }
 
+/**
+ * @brief 调用闭包 (User Function)
+ */
 std::shared_ptr<Error> VM::call_closure(std::shared_ptr<Object> cl, int num_args) {
     auto closure = std::dynamic_pointer_cast<Closure>(cl);
 
+    // 参数校验
     if (num_args != closure->fn->num_parameters) {
         return new_error("Wrong Number of Arguments: want=" +
                          std::to_string(closure->fn->num_parameters) + ", got=" +
                          std::to_string(num_args));
     }
 
-    // Create a new frame, set base pointer to current stack pointer, and push frame onto stack
+    // 创建新帧。base_pointer 指向参数在栈中的起始位置。
     auto frame = new_frame(closure, sp - num_args);
     auto err = push_frame(frame);
-    if (err) {
-        return err;
-    }
+    if (err) return err;
 
-    // Allocate space for local bindings underneath frame, by incrementing stack pointer
+    // 为局部变量预留空间：栈指针 = 基址 + 该函数定义的局部变量总数
     sp = frame->base_pointer + closure->fn->num_locals;
 
     return nullptr;
 }
 
+/**
+ * @brief 实例化闭包指令 (OpClosure)
+ * 从栈中捕获“自由变量”并将代码绑定在一起。
+ */
 std::shared_ptr<Error> VM::push_closure(int const_index, int num_free) {
     auto constant = constants.at(const_index);
-
     auto function = std::dynamic_pointer_cast<CompiledFunction>(constant);
-    if (!function) {
-        return new_error("Not a Function" + objecttype_literal(constant->type()));
-    }
 
-    // Copy each free variable to free
+    if (!function) return new_error("Not a Function");
+
+    // 从栈顶拷贝捕获的自由变量
     std::vector<std::shared_ptr<Object>> free;
     for (int i = 0; i < num_free; i++) {
         free.push_back(stack[sp - num_free + i]);
     }
 
-    // Clean up stack by popping free variables
-    sp = sp - num_free;
+    // 弹出被捕获的变量
+    sp = sp - num_free; 
 
-    // Add free variables to closure
     auto closure = std::make_shared<Closure>(Closure(function));
     closure->free = std::move(free);
     return push(closure);
 }
 
+/**
+ * @brief 调用 C++ 实现的内置函数
+ */
 std::shared_ptr<Error> VM::call_builtin(std::shared_ptr<Object> builtin, int num_args) {
     auto builtin_fn = std::dynamic_pointer_cast<Builtin>(builtin);
 
-    // Copy arguments to the builtin function from the stack
+    // 提取参数
     auto args = std::vector<std::shared_ptr<Object>>(stack.begin() + sp - num_args, stack.begin() + sp);
-
-    // Pass arguments to builtin function and call
     auto result = builtin_fn->builtin_function(args);
 
-    // Clean up stack by popping off the builtin function and arguments
+    // 清理栈：弹出参数和函数本身
     sp = sp - num_args - 1;
 
-    // If builtin function generates an error, then cast to Error and return
-    if (is_error(result)) {
-        return std::dynamic_pointer_cast<Error>(result);
-    }
+    if (is_error(result)) return std::dynamic_pointer_cast<Error>(result);
 
-    // Otherwise, push the result and return
-    auto err = push(result);
-    if (err) {
-        return err;
-    }
-
-    return nullptr;
+    return push(result);
 }
 
+// --- 运算逻辑实现 ---
+
+/**
+ * @brief 执行二元算术运算 (+ - * /)
+ */
 std::shared_ptr<Error> VM::execute_binary_operation(OpType op) {
-    // Pop operand values from stack
-    auto right = pop();
-    auto left = pop();
+    auto right = pop(); // 先弹出的在右边
+    auto left = pop();  // 后弹出的在左边
 
-    auto left_type = left->type();
-    auto right_type = right->type();
-
-    if (left_type == ObjectType::INTEGER_OBJ && right_type == ObjectType::INTEGER_OBJ) {
-        return execute_binary_integer_operation(op, left, right);
-    } else if (left_type == ObjectType::STRING_OBJ && right_type == ObjectType::STRING_OBJ) {
-        return execute_binary_string_operation(op, left, right);
-    } else {
-        return new_error("unsupported types for binary operation: " +
-                         objecttype_literal(left->type()) + " " + objecttype_literal(right->type()));
-    }
-}
-
-std::shared_ptr<Error> VM::execute_comparison(OpType op) {
-    // Pop operand values from stack
-    auto right = pop();
-    auto left = pop();
-
-    // Defer to execute_integer_comparison if both operands are Integers
     if (left->type() == ObjectType::INTEGER_OBJ && right->type() == ObjectType::INTEGER_OBJ) {
-        return execute_integer_comparison(op, left, right);
+        return execute_binary_integer_operation(op, left, right);
+    } else if (left->type() == ObjectType::STRING_OBJ && right->type() == ObjectType::STRING_OBJ) {
+        return execute_binary_string_operation(op, left, right);
     }
-
-    if (left->type() == ObjectType::BOOLEAN_OBJ && right->type() == ObjectType::BOOLEAN_OBJ) {
-        auto left_bool = std::dynamic_pointer_cast<Boolean>(left)->value;
-        auto right_bool = std::dynamic_pointer_cast<Boolean>(right)->value;
-
-        if (op == OpType::OpEqual) {
-            return push(native_bool_to_boolean_object(left_bool == right_bool));
-        }
-        if (op == OpType::OpNotEqual) {
-            return push(native_bool_to_boolean_object(left_bool != right_bool));
-        }
-        return new_error("unknown boolean comparison operator");
-    }
-
-    if (left->type() == ObjectType::NULL_OBJ && right->type() == ObjectType::NULL_OBJ) {
-        if (op == OpType::OpEqual) {
-            return push(get_true_ref());
-        }
-        if (op == OpType::OpNotEqual) {
-            return push(get_false_ref());
-        }
-        return new_error("unknown null comparison operator");
-    }
-
-    if (op == OpType::OpEqual || op == OpType::OpNotEqual || op == OpType::OpGreaterThan) {
-        return new_error("unsupported types for comparison: " +
-                         objecttype_literal(left->type()) + " " + objecttype_literal(right->type()));
-    }
-
-    return new_error("unknown comparison operator");
+    return new_error("unsupported types for binary operation");
 }
 
-std::shared_ptr<Error>
-VM::execute_integer_comparison(OpType op, std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
-    auto left_value = std::dynamic_pointer_cast<Integer>(left)->value;
-    auto right_value = std::dynamic_pointer_cast<Integer>(right)->value;
-
-    if (op == OpType::OpEqual) {
-        return push(native_bool_to_boolean_object(right_value == left_value));
-    } else if (op == OpType::OpNotEqual) {
-        return push(native_bool_to_boolean_object(right_value != left_value));
-    } else if (op == OpType::OpGreaterThan) {
-        return push(native_bool_to_boolean_object(left_value > right_value));
-    } else {
-        return new_error("unknown operator: " + std::to_string(static_cast<int>(as_opcode(op))));
-    }
-}
-
-std::shared_ptr<Error>
-VM::execute_binary_integer_operation(OpType op, std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
-    auto left_value = std::dynamic_pointer_cast<Integer>(left)->value;
-    auto right_value = std::dynamic_pointer_cast<Integer>(right)->value;
-
-    int result;
-
-    if (op == OpType::OpAdd) {
-        result = left_value + right_value;
-    } else if (op == OpType::OpSub) {
-        result = left_value - right_value;
-    } else if (op == OpType::OpMul) {
-        result = left_value * right_value;
-    } else if (op == OpType::OpDiv) {
-        if (right_value == 0)
-            return new_error(
-                    "Use zero as divisor may cause program to crash");
-
-        result = left_value / right_value;
-    } else {
-        return new_error("Unknown Integer Operator: " + std::to_string(static_cast<int>(as_opcode(op))));
-    }
-
-    // Push result back onto stack
-    return push(std::make_shared<Integer>(Integer(result)));
-}
-
-std::shared_ptr<Error>
-VM::execute_binary_string_operation(OpType op, std::shared_ptr<Object> left, std::shared_ptr<Object> right) {
-    if (op != OpType::OpAdd) {
-        return new_error("unknown string operator: " + std::to_string(static_cast<int>(as_opcode(op))));
-    }
-
-    auto left_value = std::dynamic_pointer_cast<String>(left)->value;
-    auto right_value = std::dynamic_pointer_cast<String>(right)->value;
-
-    // Push result back onto stack
-    return push(std::make_shared<String>(String(left_value + right_value)));
-}
-
+/**
+ * @brief 执行逻辑非 (!)
+ * 规则：!true -> false, !false -> true, !null -> true, !other -> false
+ */
 std::shared_ptr<Error> VM::execute_bang_operator() {
     auto operand = pop();
-
-    if (operand == get_true_ref()) {
-        return push(get_false_ref());
-    } else if (operand == get_false_ref()) {
-        return push(get_true_ref());
-    } else if (operand == get_null_ref()) {
-        return push(get_true_ref());
-    } else {
-        return push(get_false_ref());
-    }
+    if (operand == get_true_ref()) return push(get_false_ref());
+    if (operand == get_false_ref() || operand == get_null_ref()) return push(get_true_ref());
+    return push(get_false_ref());
 }
 
-std::shared_ptr<Error> VM::execute_minus_operator() {
-    auto operand = pop();
-
-    if (operand->type() != ObjectType::INTEGER_OBJ) {
-        return new_error("unsupported type for negation: " + objecttype_literal(operand->type()));
-    }
-
-    auto value = std::dynamic_pointer_cast<Integer>(operand)->value;
-
-    return push(std::make_shared<Integer>(Integer(-value)));
-}
-
+/**
+ * @brief 执行数组/哈希索引访问 (obj[index])
+ */
 std::shared_ptr<Error> VM::execute_index_expression(std::shared_ptr<Object> left, std::shared_ptr<Object> index) {
-    // Try Array indexing (expecting Array and Integer index) and Hash indexing
     if (left->type() == ObjectType::ARRAY_OBJ && index->type() == ObjectType::INTEGER_OBJ) {
         return execute_array_index(left, index);
     } else if (left->type() == ObjectType::HASH_OBJ) {
         return execute_hash_index(left, index);
-    } else {
-        return new_error("index operator not supported: " + objecttype_literal(left->type()));
     }
+    return new_error("index operator not supported");
 }
 
-std::shared_ptr<Error> VM::execute_array_index(std::shared_ptr<Object> array, std::shared_ptr<Object> index) {
-    auto array_obj = std::dynamic_pointer_cast<Array>(array);
-    auto i = std::dynamic_pointer_cast<Integer>(index)->value;
-
-    auto max = static_cast<int>(array_obj->elements.size()) - 1;
-
-    if (i < 0 || i > max) {
-        return push(get_null_ref());
-    }
-
-    return push(array_obj->elements.at(i));
-}
-
-std::shared_ptr<Error> VM::execute_hash_index(std::shared_ptr<Object> hash, std::shared_ptr<Object> index) {
-    auto hash_obj = std::dynamic_pointer_cast<Hash>(hash);
-
-    auto key = std::dynamic_pointer_cast<Hashable>(index);
-    if (!key) {
-        return new_error("unusable as hash key: " + objecttype_literal(index->type()));
-    }
-
-    auto contains = hash_obj->pairs.find(key->hash_key());
-
-    if (contains == hash_obj->pairs.end()) {
-        return push(get_null_ref());
-    }
-
-    auto pair = hash_obj->pairs[key->hash_key()];
-
-    return push(pair.value);
-}
-
-std::shared_ptr<Object> VM::build_array(int start_index, int end_index) {
-    auto array = std::make_shared<Array>(Array{});
-
-    for (int i = start_index; i < end_index; i++) {
-        array->elements.push_back(stack[i]);
-    }
-
-    return array;
-}
-
-std::tuple<std::shared_ptr<Object>, std::shared_ptr<Error>> VM::build_hash(int start_index, int end_index) {
-    std::map<HashKey, HashPair> hashed_pairs;
-
-    for (int i = start_index; i < end_index; i += 2) {
-        auto key = stack[i];
-        auto value = stack[i + 1];
-
-        auto hash_key = std::dynamic_pointer_cast<Hashable>(key);
-        if (!hash_key) {
-            return std::make_tuple(nullptr, new_error("unusable as hash key."));
-        }
-
-        auto hashed = hash_key->hash_key();
-        hashed_pairs[hashed] = HashPair{key, value};
-    }
-
-    return std::make_tuple(std::make_shared<Hash>(Hash{hashed_pairs}), nullptr);
-}
+// =============================================================================
+// VM 核心主循环 (Fetch-Decode-Execute)
+// =============================================================================
 
 std::shared_ptr<Error> VM::run() {
     int ip;
     OpType op;
 
+    // --- 虚拟机主循环：只要当前栈帧还没运行到最后一条指令就继续 ---
     while (current_frame()->ip < static_cast<int>(current_frame()->instructions().size()) - 1) {
         auto frame = current_frame();
 
-        // Increment instruction pointer within current stack frame
+        // 1. 指令步进：增加当前栈帧的指令指针 (Instruction Pointer)
         ip = ++(frame->ip);
 
-        // Fetch current instruction within current stack frame
+        // 2. 取指：从当前帧的指令集中读取操作码
         const auto& ins = frame->instructions();
         op = static_cast<OpType>(ins.at(ip));
 
-        if (op == OpType::OpConstant) {
-            auto const_index = read_uint_16(ins, ip + 1);
-            frame->ip += 2;
+        // =====================================================================
+        // 指令解码与执行 (Decode & Execute)
+        // =====================================================================
 
-            // Add constant to VM constants
-            auto err = push(constants.at(const_index));
-            if (err) {
-                return err;
-            }
-            // OpPop instruction pops the top element off the stack
+        if (op == OpType::OpConstant) {
+            // 加载常量：读取 2 字节的常量池索引
+            auto const_index = read_uint_16(ins, ip + 1);
+            frame->ip += 2; // 跳过操作数部分
+            auto err = push(constants.at(const_index)); // 压入常量
+            if (err) return err;
+
         } else if (op == OpType::OpPop) {
+            // 弹出栈顶：通常用于清理表达式语句的结果
             pop();
-            // Binary operations operate on two values beneath on stack
+
         } else if (op == OpType::OpAdd || op == OpType::OpSub || op == OpType::OpMul || op == OpType::OpDiv) {
+            // 二元算术运算：弹出两个操作数进行计算并压回结果
             auto err = execute_binary_operation(op);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpTrue) {
+            // 压入布尔真
             auto err = push(get_true_ref());
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpFalse) {
+            // 压入布尔假
             auto err = push(get_false_ref());
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpEqual || op == OpType::OpNotEqual || op == OpType::OpGreaterThan) {
+            // 比较运算：处理数字或布尔值的等值/大小判定
             auto err = execute_comparison(op);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpBang) {
+            // 逻辑取反 (!)
             auto err = execute_bang_operator();
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpMinus) {
+            // 数值取负 (-)
             auto err = execute_minus_operator();
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpJumpNotTruthy) {
-            // Read jump target into pos
+            // 条件跳转：如果栈顶为假则跳转到目标地址
             auto pos = read_uint_16(ins, ip + 1);
-            // Skip two bytes of operand associated with conditional jump
-            frame->ip += 2;
-            // Pop stack top (condition). If not truthy then jump to target, else execute consequence
+            frame->ip += 2; // 跳过 2 字节地址操作数
             auto condition = pop();
             if (!is_truthy(condition)) {
-                // Set instruction pointer to (jump target - 1), as ip is incremented on next iteration
+                // 如果条件不成立，修改 IP 到跳转目标（减1是因为循环开头会自增）
                 frame->ip = pos - 1;
             }
+
         } else if (op == OpType::OpJump) {
-            // Read jump target into pos
+            // 无条件跳转
             auto pos = read_uint_16(ins, ip + 1);
-            // Set instruction pointer to (jump target - 1), as ip is incremented on next iteration
             frame->ip = pos - 1;
+
         } else if (op == OpType::OpNull) {
+            // 压入空值 (null)
             auto err = push(get_null_ref());
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpSetGlobal) {
+            // 设置全局变量：弹出栈顶值存入全局池
             auto global_index = read_uint_16(ins, ip + 1);
             frame->ip += 2;
-
             globals[global_index] = pop();
+
         } else if (op == OpType::OpGetGlobal) {
+            // 获取全局变量：从全局池加载到栈顶
             auto global_index = read_uint_16(ins, ip + 1);
             frame->ip += 2;
-
             auto err = push(globals[global_index]);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpArray) {
+            // 构建数组：读取数组长度（2字节）
             auto num_elements = read_uint_16(ins, ip + 1);
             frame->ip += 2;
 
+            // 从栈中提取 num_elements 个元素构建 Array 对象
             auto array = build_array(sp - num_elements, sp);
-            sp -= num_elements;
+            sp -= num_elements; // 清理掉这些被使用的操作数
 
-            auto err = push(array);
-            if (err) {
-                return err;
-            }
+            auto err = push(array); // 将生成的数组对象压回栈顶
+            if (err) return err;
+
         } else if (op == OpType::OpHash) {
+            // 构建哈希表：读取键值对的总数量（2字节，即 2 * 元素个数）
             auto num_elements = read_uint_16(ins, ip + 1);
             frame->ip += 2;
 
+            // 从栈中提取元素并配对
             auto [hash, err] = build_hash(sp - num_elements, sp);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
             sp -= num_elements;
 
             err = push(hash);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpIndex) {
+            // 索引访问：pop 出索引和被索引对象（如 array[0]）
             auto index = pop();
             auto left = pop();
 
             auto err = execute_index_expression(left, index);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpCall) {
+            // 函数调用：读取参数个数（1字节）
             auto num_args = read_uint_8(ins, ip + 1);
             frame->ip += 1;
 
+            // 执行分发逻辑，进入新函数或执行内置逻辑
             auto err = execute_call(num_args);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpReturnValue) {
+            // 带值返回：pop 出返回值
             auto return_value = pop();
 
-            // Pop frame by resetting stack pointer to original value before entering frame
+            // 弹出当前栈帧，回到上一个调用者的环境
             auto frame = pop_frame();
-            sp = frame->base_pointer - 1; // The -1 effectively pops the function off the stack
+            // 重置栈指针：清理当前函数的局部变量空间，并弹出函数本身
+            sp = frame->base_pointer - 1; 
 
-            auto err = push(return_value);
-            if (err) {
-                return err;
-            }
+            auto err = push(return_value); // 把返回值压回父级环境的栈
+            if (err) return err;
+
         } else if (op == OpType::OpReturn) {
-            // Pop frame by resetting stack pointer to original value before entering frame
+            // 空返回（无显式 return 或 return ;）
             auto frame = pop_frame();
-            sp = frame->base_pointer - 1; // The -1 effectively pops the function off the stack
+            sp = frame->base_pointer - 1;
 
-            auto err = push(get_null_ref());
-            if (err) {
-                return err;
-            }
+            auto err = push(get_null_ref()); // 统一压入 null
+            if (err) return err;
+
         } else if (op == OpType::OpSetLocal) {
+            // 设置局部变量：读取索引（1字节）
             auto local_index = read_uint_8(ins, ip + 1);
             frame->ip += 1;
 
             auto frame = current_frame();
-
-            // Store local bindings directly on the stack in the void underneath the current stack frame
+            // 直接操作当前帧 base_pointer 之后的栈空间
             stack[frame->base_pointer + local_index] = pop();
+
         } else if (op == OpType::OpGetLocal) {
+            // 获取局部变量
             auto local_index = read_uint_8(ins, ip + 1);
             frame->ip += 1;
 
             auto frame = current_frame();
-
-            // Retrieve local binding directly from the stack underneath the current stack frame
             auto err = push(stack[frame->base_pointer + local_index]);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpGetBuiltin) {
+            // 获取内置函数：通过索引（1字节）从内置函数表中加载
             auto builtin_index = read_uint_8(ins, ip + 1);
             frame->ip += 1;
 
             auto definition = getBuiltinByIndex(builtin_index);
-
             auto err = push(definition);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpClosure) {
+            // 构建闭包：
+            // 1. 读取常量池索引（2字节，指向 CompiledFunction）
+            // 2. 读取自由变量个数（1字节）
             auto const_index = read_uint_16(ins, ip + 1);
             auto num_free = read_uint_8(ins, ip + 3);
             frame->ip += 3;
 
+            // 实例化闭包并捕获栈上的自由变量
             auto err = push_closure(const_index, num_free);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
+
         } else if (op == OpType::OpGetFree) {
+            // 获取自由变量：
+            // 从当前闭包对象的 free 列表中提取变量并压入栈顶
             auto free_index = read_uint_8(ins, ip + 1);
             frame->ip += 1;
 
             auto current_closure = current_frame()->cl;
-
             auto err = push(current_closure->free.at(free_index));
-            if (err) {
-                return err;
-            }
-        } else if (op == OpType::OpCurrentClosure) {
-            auto current_closure = current_frame()->cl;
+            if (err) return err;
 
+        } else if (op == OpType::OpCurrentClosure) {
+            // 获取当前闭包对象：用于支持递归调用自身
+            auto current_closure = current_frame()->cl;
             auto err = push(current_closure);
-            if (err) {
-                return err;
-            }
+            if (err) return err;
         }
     }
 
-    return nullptr; // TODO: should we instead return an Error?
+    return nullptr; // 运行完成，无错误
 }
 
-std::shared_ptr<Boolean> native_bool_to_boolean_object(bool input) {
-    if (input) {
-        return get_true_ref();
-    }
-    return get_false_ref();
-}
-
+/**
+ * @brief 真值判断规则
+ * 遵循大部分动态语言规则：null 和 false 为假，其余皆为真。
+ */
 bool is_truthy(std::shared_ptr<Object> obj) {
     if (obj->type() == ObjectType::BOOLEAN_OBJ) {
         return std::dynamic_pointer_cast<Boolean>(obj)->value;
     } else if (obj == get_null_ref()) {
         return false;
     }
-
     return true;
 }
