@@ -1,7 +1,12 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include "litecomp/object.hpp"
 
+// [测试用例] 验证 ObjectModule::EnvironmentCopyAssignmentClearsOldEntries
 TEST(ObjectModule, EnvironmentCopyAssignmentClearsOldEntries) {
     Environment src;
     src.set("a", std::make_shared<Integer>(Integer(1)));
@@ -24,6 +29,7 @@ TEST(ObjectModule, EnvironmentCopyAssignmentClearsOldEntries) {
     EXPECT_EQ(x_obj, nullptr);
 }
 
+// [测试用例] 验证 ObjectModule::HashMoveAssignmentReplacesContent
 TEST(ObjectModule, HashMoveAssignmentReplacesContent) {
     HashKey key1{ObjectType::INTEGER_OBJ, 1};
     HashKey key2{ObjectType::INTEGER_OBJ, 2};
@@ -41,10 +47,12 @@ TEST(ObjectModule, HashMoveAssignmentReplacesContent) {
     EXPECT_EQ(h2.pairs.find(key2), h2.pairs.end());
 }
 
+// [测试用例] 验证 ObjectModule::NullIsSingletonByReference
 TEST(ObjectModule, NullIsSingletonByReference) {
     EXPECT_EQ(get_null_ref(), get_null_ref());
 }
 
+// [测试用例] 验证 ObjectModule::HashKeyOrderingDistinguishesTypeAndValue
 TEST(ObjectModule, HashKeyOrderingDistinguishesTypeAndValue) {
     HashKey int_one{ObjectType::INTEGER_OBJ, 1};
     HashKey bool_true{ObjectType::BOOLEAN_OBJ, 1};
@@ -56,6 +64,7 @@ TEST(ObjectModule, HashKeyOrderingDistinguishesTypeAndValue) {
     EXPECT_EQ(pairs.size(), 2u);
 }
 
+// [测试用例] 验证 ObjectModule::EnvironmentGetResolvesThroughMultipleOuterScopes
 TEST(ObjectModule, EnvironmentGetResolvesThroughMultipleOuterScopes) {
     auto global = new_environment();
     global->set("a", std::make_shared<Integer>(Integer(42)));

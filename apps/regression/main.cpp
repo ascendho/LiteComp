@@ -1,3 +1,7 @@
+// =============================================================================
+// Application entry/demo layer
+// This file contains app-facing wiring for demo, regression, or REPL scenarios.
+// =============================================================================
 #include <iostream>
 #include <string>
 #include <vector>
@@ -12,6 +16,7 @@ struct RegressionCase {
     std::string expected;
 };
 
+// 程序入口：组织初始化并返回进程退出码
 int main() {
     std::vector<RegressionCase> cases = {
             {"1 + 2", "3"},

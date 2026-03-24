@@ -1,7 +1,12 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include "litecomp/symbol_table.hpp"
 
+// [测试用例] 验证 SymbolTableModule::DefineGlobalAndLocalSymbols
 TEST(SymbolTableModule, DefineGlobalAndLocalSymbols) {
     auto global = new_symbol_table();
     auto a = global->define("a");
@@ -14,6 +19,7 @@ TEST(SymbolTableModule, DefineGlobalAndLocalSymbols) {
     EXPECT_EQ(b.index, 0);
 }
 
+// [测试用例] 验证 SymbolTableModule::ResolveFreeSymbol
 TEST(SymbolTableModule, ResolveFreeSymbol) {
     auto global = new_symbol_table();
     global->define("a");

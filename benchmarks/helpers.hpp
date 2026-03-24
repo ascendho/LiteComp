@@ -1,5 +1,10 @@
 #pragma once
 
+// =============================================================================
+// Benchmark module
+// This file defines benchmark inputs, helpers, or benchmark registration logic.
+// =============================================================================
+
 
 #include <iostream>
 #include <memory>
@@ -12,6 +17,7 @@
 
 namespace litecomp_bench {
 
+// 解析辅助：将源码字符串转换为 AST Program
 inline std::shared_ptr<Program> parse_or_exit(const std::string& source) {
     Lexer lexer(source);
     Parser parser(std::move(lexer));
@@ -26,6 +32,7 @@ inline std::shared_ptr<Program> parse_or_exit(const std::string& source) {
     return program;
 }
 
+// 编译辅助：将 AST 编译为可执行字节码
 inline std::shared_ptr<Bytecode> compile_or_exit(const std::shared_ptr<Program>& program) {
     auto compiler = newCompiler();
     auto err = compiler->compile(program);
@@ -37,6 +44,7 @@ inline std::shared_ptr<Bytecode> compile_or_exit(const std::shared_ptr<Program>&
     return compiler->bytecode();
 }
 
+// 执行辅助：运行字节码并在失败时立即退出进程
 inline void run_vm_or_exit(const std::shared_ptr<Bytecode>& code) {
     auto cloned = std::make_shared<Bytecode>(*code);
     VM vm(std::move(cloned));

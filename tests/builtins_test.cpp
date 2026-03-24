@@ -1,9 +1,14 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include <vector>
 
 #include "litecomp/builtins.hpp"
 
+// [测试用例] 验证 BuiltinsModule::LenSupportsArrayAndString
 TEST(BuiltinsModule, LenSupportsArrayAndString) {
     auto array = std::make_shared<Array>(Array{});
     array->elements.push_back(std::make_shared<Integer>(Integer(1)));
@@ -16,6 +21,7 @@ TEST(BuiltinsModule, LenSupportsArrayAndString) {
     EXPECT_EQ(std::dynamic_pointer_cast<Integer>(str_len)->value, 5);
 }
 
+// [测试用例] 验证 BuiltinsModule::PushReturnsNewArray
 TEST(BuiltinsModule, PushReturnsNewArray) {
     auto array = std::make_shared<Array>(Array{});
     array->elements.push_back(std::make_shared<Integer>(Integer(1)));
@@ -28,6 +34,7 @@ TEST(BuiltinsModule, PushReturnsNewArray) {
     EXPECT_EQ(pushed_arr->elements.size(), 2u);
 }
 
+// [测试用例] 验证 BuiltinsModule::UnknownBuiltinByNameReturnsNullptr
 TEST(BuiltinsModule, UnknownBuiltinByNameReturnsNullptr) {
     EXPECT_EQ(getBuiltinByName("unknown_builtin"), nullptr);
 }

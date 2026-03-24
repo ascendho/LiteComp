@@ -1,7 +1,12 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include "litecomp/bytecode.hpp"
 
+// [测试用例] 验证 BytecodeModule::StoresInstructionsAndConstants
 TEST(BytecodeModule, StoresInstructionsAndConstants) {
     Bytecode code;
     code.instructions = make(OpType::OpTrue);

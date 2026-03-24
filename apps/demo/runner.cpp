@@ -1,3 +1,7 @@
+// =============================================================================
+// Application entry/demo layer
+// This file contains app-facing wiring for demo, regression, or REPL scenarios.
+// =============================================================================
 #include "apps/demo/runner.hpp"
 
 #include <iostream>
@@ -7,6 +11,7 @@
 #include "litecomp/parser.hpp"
 #include "litecomp/vm.hpp"
 
+// 执行所有 demo case：编译并运行输入，核对输出结果
 int run_demo_cases(const std::vector<DemoCase>& cases) {
     std::cout << "LiteComp feature demo" << std::endl;
 

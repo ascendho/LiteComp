@@ -1,3 +1,7 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -18,6 +22,7 @@ struct NegativeCase {
 
 }  // namespace
 
+// [测试用例] 验证 NegativeGolden::ParserErrorsAreStable
 TEST(NegativeGolden, ParserErrorsAreStable) {
     const std::vector<NegativeCase> cases = {
         {"missing_prefix_parse_fn", ";", "No Bounded Parse Function Found for ; token"},
@@ -33,6 +38,7 @@ TEST(NegativeGolden, ParserErrorsAreStable) {
     }
 }
 
+// [测试用例] 验证 NegativeGolden::CompileErrorsAreStable
 TEST(NegativeGolden, CompileErrorsAreStable) {
     const std::vector<NegativeCase> cases = {
         {"undefined_identifier", "x", "x is Not Defined"},
@@ -49,6 +55,7 @@ TEST(NegativeGolden, CompileErrorsAreStable) {
     }
 }
 
+// [测试用例] 验证 NegativeGolden::RuntimeErrorsAreStable
 TEST(NegativeGolden, RuntimeErrorsAreStable) {
     const std::vector<NegativeCase> cases = {
         {"wrong_number_of_args", "func(a) { a }(1, 2)", "Wrong Number of Arguments: want=1, got=2"},

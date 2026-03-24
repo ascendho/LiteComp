@@ -1,9 +1,14 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include <vector>
 
 #include "litecomp/lexer.hpp"
 
+// [测试用例] 验证 LexerModule::ScanBasicProgram
 TEST(LexerModule, ScanBasicProgram) {
     const std::string input = R"(declare x = 5; if (x < 10) { x } else { 0 })";
     Lexer lexer(input);
@@ -21,6 +26,7 @@ TEST(LexerModule, ScanBasicProgram) {
     }
 }
 
+// [测试用例] 验证 LexerModule::ScanStringLiteral
 TEST(LexerModule, ScanStringLiteral) {
     Lexer lexer("\"hello\"");
     Token tok = lexer.scan();

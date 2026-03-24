@@ -1,3 +1,7 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include <vector>
@@ -17,6 +21,7 @@ Instructions concat(const std::vector<Instructions>& list) {
 }
 }  // namespace
 
+// [测试用例] 验证 CompilerModule::CompileSimpleArithmeticProgram
 TEST(CompilerModule, CompileSimpleArithmeticProgram) {
     std::vector<std::string> parser_errors;
     std::shared_ptr<Compiler> compiler;
@@ -39,6 +44,7 @@ TEST(CompilerModule, CompileSimpleArithmeticProgram) {
     EXPECT_EQ(std::dynamic_pointer_cast<Integer>(bytecode->constants[1])->value, 2);
 }
 
+// [测试用例] 验证 CompilerModule::CompileUndefinedIdentifierReturnsError
 TEST(CompilerModule, CompileUndefinedIdentifierReturnsError) {
     std::vector<std::string> parser_errors;
     std::shared_ptr<Compiler> compiler;

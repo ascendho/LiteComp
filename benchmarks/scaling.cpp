@@ -1,3 +1,7 @@
+// =============================================================================
+// Benchmark module
+// This file defines benchmark inputs, helpers, or benchmark registration logic.
+// =============================================================================
 #include <benchmark/benchmark.h>
 
 #include <string>
@@ -22,6 +26,7 @@ std::string build_arithmetic_chain_program(int terms) {
 
 }  // namespace
 
+// [基准项] BM_Scaling_Parse_ArithmeticChain：执行性能测量主循环
 static void BM_Scaling_Parse_ArithmeticChain(benchmark::State& state) {
     const int terms = static_cast<int>(state.range(0));
     const auto source = build_arithmetic_chain_program(terms);
@@ -33,6 +38,7 @@ static void BM_Scaling_Parse_ArithmeticChain(benchmark::State& state) {
 }
 BENCHMARK(BM_Scaling_Parse_ArithmeticChain)->RangeMultiplier(2)->Range(8, 1024);
 
+// [基准项] BM_Scaling_Compile_ArithmeticChain：执行性能测量主循环
 static void BM_Scaling_Compile_ArithmeticChain(benchmark::State& state) {
     const int terms = static_cast<int>(state.range(0));
     const auto source = build_arithmetic_chain_program(terms);
@@ -45,6 +51,7 @@ static void BM_Scaling_Compile_ArithmeticChain(benchmark::State& state) {
 }
 BENCHMARK(BM_Scaling_Compile_ArithmeticChain)->RangeMultiplier(2)->Range(8, 1024);
 
+// [基准项] BM_Scaling_VM_ArithmeticChain：执行性能测量主循环
 static void BM_Scaling_VM_ArithmeticChain(benchmark::State& state) {
     const int terms = static_cast<int>(state.range(0));
     const auto source = build_arithmetic_chain_program(terms);

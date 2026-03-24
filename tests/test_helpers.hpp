@@ -1,5 +1,10 @@
 #pragma once
 
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
+
 
 #include <memory>
 #include <string>
@@ -14,6 +19,7 @@
 
 namespace test_helpers {
 
+// 解析辅助：将源码字符串转换为 AST Program
 inline std::shared_ptr<Program> parse_program(const std::string& input, std::vector<std::string>* errors) {
     Lexer lexer(input);
     Parser parser(std::move(lexer));
@@ -24,6 +30,7 @@ inline std::shared_ptr<Program> parse_program(const std::string& input, std::vec
     return program;
 }
 
+// 编译辅助：解析并编译输入源码，返回编译阶段错误
 inline std::shared_ptr<Error> compile_program(
     const std::string& input,
     std::shared_ptr<Compiler>* out_compiler,
@@ -41,6 +48,7 @@ inline std::shared_ptr<Error> compile_program(
     return err;
 }
 
+// 端到端辅助：从源码直接得到执行结果字符串或错误信息
 inline std::pair<std::string, std::string> eval_input(const std::string& input) {
     std::vector<std::string> parser_errors;
     std::shared_ptr<Compiler> compiler;

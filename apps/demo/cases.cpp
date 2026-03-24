@@ -1,5 +1,10 @@
+// =============================================================================
+// Application entry/demo layer
+// This file contains app-facing wiring for demo, regression, or REPL scenarios.
+// =============================================================================
 #include "apps/demo/cases.hpp"
 
+// 构建演示用例集合：覆盖语言主要特性路径
 std::vector<DemoCase> build_demo_cases() {
     return {
         {"arithmetic + precedence", "1 + 2 * 3 - 4", "3"},

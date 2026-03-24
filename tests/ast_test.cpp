@@ -1,3 +1,7 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -16,6 +20,7 @@ std::shared_ptr<Program> parse(const std::string& input) {
 }
 }  // namespace
 
+// [测试用例] 验证 AstModule::ProgramCopyAssignmentClearsOldStatements
 TEST(AstModule, ProgramCopyAssignmentClearsOldStatements) {
     auto one_stmt = parse("1;");
     auto two_stmts = parse("1; 2;");
@@ -31,6 +36,7 @@ TEST(AstModule, ProgramCopyAssignmentClearsOldStatements) {
     EXPECT_EQ(target.string(), "12");
 }
 
+// [测试用例] 验证 AstModule::IdentifierStringAndClone
 TEST(AstModule, IdentifierStringAndClone) {
     Token token{TokenType::IDENTIFIER, "abc"};
     Identifier id(token, "abc");

@@ -1,3 +1,7 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include "litecomp/bytecode.hpp"
@@ -6,30 +10,35 @@
 #include "litecomp/vm.hpp"
 #include "tests/test_helpers.hpp"
 
+// [测试用例] 验证 VmModule::ExecutesArithmetic
 TEST(VmModule, ExecutesArithmetic) {
     auto [result, err] = test_helpers::eval_input("1 + 2 * 3");
     EXPECT_TRUE(err.empty());
     EXPECT_EQ(result, "7");
 }
 
+// [测试用例] 验证 VmModule::ArrayOutOfRangeReturnsNull
 TEST(VmModule, ArrayOutOfRangeReturnsNull) {
     auto [result, err] = test_helpers::eval_input("[1, 2, 3][99]");
     EXPECT_TRUE(err.empty());
     EXPECT_EQ(result, "null");
 }
 
+// [测试用例] 验证 VmModule::HashMissingKeyReturnsNull
 TEST(VmModule, HashMissingKeyReturnsNull) {
     auto [result, err] = test_helpers::eval_input("{1: 2}[3]");
     EXPECT_TRUE(err.empty());
     EXPECT_EQ(result, "null");
 }
 
+// [测试用例] 验证 VmModule::UnsupportedStringComparisonReturnsError
 TEST(VmModule, UnsupportedStringComparisonReturnsError) {
     auto [result, err] = test_helpers::eval_input("\"a\" == \"a\"");
     EXPECT_TRUE(result.empty());
     EXPECT_NE(err.find("unsupported types for comparison"), std::string::npos);
 }
 
+// [测试用例] 验证 VmModule::PushFrameGuardPreventsOverflow
 TEST(VmModule, PushFrameGuardPreventsOverflow) {
     auto bytecode = std::make_shared<Bytecode>();
     bytecode->instructions = make(OpType::OpNull);

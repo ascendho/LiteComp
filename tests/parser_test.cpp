@@ -1,9 +1,14 @@
+// =============================================================================
+// Test module
+// This file validates behavior and guards against regressions for LiteComp.
+// =============================================================================
 #include <gtest/gtest.h>
 
 #include <vector>
 
 #include "litecomp/parser.hpp"
 
+// [测试用例] 验证 ParserModule::ParseExpressionPrecedence
 TEST(ParserModule, ParseExpressionPrecedence) {
     Lexer lexer("1 + 2 * 3");
     Parser parser(std::move(lexer));
@@ -14,6 +19,7 @@ TEST(ParserModule, ParseExpressionPrecedence) {
     EXPECT_EQ(program->string(), "(1 + (2 * 3))");
 }
 
+// [测试用例] 验证 ParserModule::ReportsMissingPrefixParseFunction
 TEST(ParserModule, ReportsMissingPrefixParseFunction) {
     Lexer lexer(";");
     Parser parser(std::move(lexer));
