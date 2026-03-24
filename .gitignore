@@ -1,3 +1,4 @@
 # 忽略build
 build/
 build-warn/
+build-release/

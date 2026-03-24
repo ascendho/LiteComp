@@ -52,6 +52,16 @@ cmake --build build -j
 
 运行多组基准用例，输出 parse/compile/run 平均耗时。
 
+注意：基准测试必须使用 Release/Optimized 配置，避免 Debug 构建导致结果失真。
+
+推荐使用独立构建目录：
+
+```bash
+cmake -S . -B build-release -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release -j --target litecomp_benchmark
+./build-release/litecomp_benchmark
+```
+
 ```bash
 ./build/litecomp_benchmark
 ```
@@ -63,13 +73,13 @@ cmake --build build -j
 导出 CSV（用于画曲线）：
 
 ```bash
-./build/litecomp_benchmark \
+./build-release/litecomp_benchmark \
 	--benchmark_filter='BM_Scaling_.*' \
-	--benchmark_out=build/benchmark_scaling.csv \
+	--benchmark_out=build-release/benchmark_scaling.csv \
 	--benchmark_out_format=csv
 ```
 
-生成的 `build/benchmark_scaling.csv` 可直接导入 Python/Excel/Origin 绘制规模曲线。
+生成的 `build-release/benchmark_scaling.csv` 可直接导入 Python/Excel/Origin 绘制规模曲线。
 
 ### 3.2 回归测试程序（Regression）
 
